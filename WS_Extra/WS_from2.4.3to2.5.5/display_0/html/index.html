@@ -1,0 +1,25 @@
+<!-- ディスプレイ対応前のHTML -->
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    
+    <!-- viewportが1.335に設定されている：adjust.jsを使用する -->
+    <meta name="viewport"
+	  content="initial-scale = 1.335,
+		   minimum-scale = 1.335,
+		   maximum-scale = 1.335" />
+
+    <!-- jQueryライブラリをを利用
+	 利用していないアプリには以下の記述を追加 -->
+    <script src="/libs/qimessaging/1.0/jquery.min.js"></script>
+
+    <!-- Choregrapheプロジェクトの html/scripts 内にadjust.jsを追加した後
+       以下に <script src="scripts/adjust.js"></script>　を追加-->
+    
+    <title>2.4.3でタブレットに標示</title>
+  </head>
+  <body>
+    <img src="img.jpg" width="1260" height="760">
+  </body>
+</html>

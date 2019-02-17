@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <title>単純なJavaScript (発話)</title>
+
+    <!-- qimessaging.jsの読み込み -->
+    <script src="/libs/qimessaging/2/qimessaging.js"></script>
+    <script>
+
+      <!-- QiSessionオブジェクトの生成、初期化 -->
+      var session;
+      QiSession( function (s) {
+        session = s;
+      });
+      <!-- 下記でもOK -->
+      <!-- var session = new QiSession(); -->
+
+
+      <!--Pepperが発話するだけの関数：
+	  <button>が押されると、onclick属性に指定されたスクリプトが実行され、
+	  この関数が実行されます-->
+      function sampleButtonClicked() {
+        console.log("sampleButtonClicked")
+
+        <!-- QiSessionからAPI:"ALTextToSpeech"オブジェクト取得、
+	     「ALTextToSpeech」という名前で呼び出せるよう実行 -->
+        session.service("ALTextToSpeech").done(function (ALTextToSpeech) {
+
+            <!-- ALTextToSpeech.say呼び出し -->
+            ALTextToSpeech.say("こんにちはー");
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div style="font-size: 6em">
+      単純なJavaScript (発話)
+    </div>
+    <button style="font-size: 6em" type="button" onclick="sampleButtonClicked();">発話</button>
+  </body>
+</html>

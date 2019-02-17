@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <title>QiMessaging (メモリを監視)</title>
+
+    <!-- qimessaging.jsの読み込み -->
+    <script src="/libs/qimessaging/1.0/qimessaging.js"></script>
+    <script>
+
+      <!-- QiSessionオブジェクトの生成、初期化 -->
+      var session = new QiSession();
+      
+
+      <!-- html側の変数(表示)を更新する関数 -->
+      function toTabletHandler(value) {
+        console.log("PepperQiMessaging/totabletイベント発生: " + value);
+        document.getElementById("memory").innerHTML = value;
+      }
+      
+      <!-- ALMemory.subscriber関数によるイベント監視 -->
+      function startSubscribe() {
+        session.service("ALMemory").done(function (ALMemory) {
+          console.log("ALMemory取得成功");
+
+          <!-- Memoryのkey:"totablet"の値に変更がないか監視する -->
+          ALMemory.subscriber("PepperQiMessaging/totablet").done(function(subscriber) {
+          <!-- keyに変更があれば、タブレット表示更新関数にvalueを渡して実行 -->
+            subscriber.signal.connect(toTabletHandler);
+          });
+        });
+      }
+    </script>
+  </head>
+  <body onLoad="startSubscribe();">
+    <div style="font-size: 6em">
+      QiMessaging (メモリを監視)
+    </div>
+    <div style="font-size: 4em">
+      現在のPepperQiMessaging/totabletの値: <span id="memory">不明</span>
+    </div>
+  </body>
+</html>

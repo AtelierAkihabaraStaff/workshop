@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8" ?><ChoregrapheProject xmlns="http://www.aldebaran-robotics.com/schema/choregraphe/project.xsd" xar_version="3"><Box name="root" id="-1" localization="8" tooltip="Root box of Choregraphe&apos;s behavior. Highest level possible." x="0" y="0"><bitmap>media/images/box/root.png</bitmap><script language="4"><content><![CDATA[]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="ボックスBehaviorの終了時に信号を送る。" id="4" /><Timeline enable="0"><BehaviorLayer name="behavior_layer1"><BehaviorKeyframe name="keyframe1" index="1"><Diagram scale="100"><Box name="Take Picture (1)" id="3" localization="8" tooltip="Take a picture with one of the cameras camera and store it in his memory in ~/recordings/cameras. The image format is JPG.&#x0A;&#x0A;V1.1.0&#x0A;" x="182" y="35"><bitmap>media/images/box/interaction/picture.png</bitmap><script language="4"><content><![CDATA[import time, os
+
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+        self.resolutionMap = {
+            '160 x 120': 0,
+            '320 x 240': 1,
+            '640 x 480': 2,
+            '1280 x 960': 3
+        }
+        self.cameraMap = {
+            'Top': 0,
+            'Bottom': 1
+        }
+
+        self.recordFolder = "/home/nao/recordings/cameras/"
+
+    def onLoad(self):
+        self.bIsRunning = False
+        try:
+            self.photoCapture = ALProxy( "ALPhotoCapture" )
+        except Exception as e:
+            self.photoCapture = None
+            self.logger.error(e)
+
+    def onUnload(self):
+        pass
+
+    def onInput_onStart(self):
+        if( self.bIsRunning ):
+            return
+        self.bIsRunning = True
+        resolution = self.resolutionMap[self.getParameter("Resolution")]
+        cameraID = self.cameraMap[self.getParameter("Camera")]
+        fileName = self.getParameter("File Name")
+        if self.photoCapture:
+            self.photoCapture.setResolution(resolution)
+            self.photoCapture.setCameraID(cameraID)
+            self.photoCapture.setPictureFormat("jpg")
+            self.photoCapture.takePicture( self.recordFolder, fileName )
+        self.bIsRunning = False
+
+        p = os.path.join(self.recordFolder,fileName+".jpg")
+        self.logger.info(p)
+        self.onStopped(p)]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Output name="onStopped" type="0" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="3" /><Parameter name="Resolution" inherits_from_parent="0" content_type="3" value="640 x 480" default_value="640 x 480" custom_choice="0" tooltip="Image resolution." id="4"><Choice value="160 x 120" /><Choice value="320 x 240" /><Choice value="640 x 480" /><Choice value="1280 x 960" /></Parameter><Parameter name="File Name" inherits_from_parent="0" content_type="3" value="image" default_value="image" custom_choice="0" tooltip="Name of the file without its extension." id="5" /><Parameter name="Camera" inherits_from_parent="0" content_type="3" value="Top" default_value="Top" custom_choice="0" tooltip="Enables to select the camera (Top or Bottom) that will take the picture." id="6"><Choice value="Top" /><Choice value="Bottom" /></Parameter></Box><Box name="person" id="5" localization="8" tooltip="This box contains a basic python script and can be used to create any python script box you would like.&#x0A;&#x0A;To edit its script, double-click on it." x="242" y="156"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[import os, requests, json
+
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+        global pId
+
+        self.url = 'https://australiaeast.api.cognitive.microsoft.com/face/v1.0/persongroups/'
+        self.gId = self.getParameter("groupNameId")
+        self.personName = self.getParameter("personName")
+
+    def onLoad(self):
+        #put initialization code here
+        pass
+
+    def onUnload(self):
+        #put clean-up code here
+        pass
+
+    def onInput_onStart(self):
+        cp_url = self.url + self.gId + '/persons/'
+        headers = {
+            'Content-Type': 'application/json',
+            'Ocp-Apim-Subscription-Key': key,
+        }
+        params = {
+            'personGroupId': self.gId,
+        }
+        body = {
+            "name": self.personName,
+            "userData": "User-provided data attached to the person."
+        }
+        try:
+            r = requests.post(cp_url ,headers = headers,params = params,data = json.dumps(body))
+        except Exception as e:
+                self.logger.info(e)  # 必要であれば失敗時の処理
+        else:
+            self.logger.info(r)
+            if str(r)=="<Response [200]>":
+                rr = r.json()
+                self.logger.info(rr)
+                pId = rr['personId'].encode('utf-8')
+                self.logger.info(pId)
+            else:
+                self.logger.info(r)
+
+
+    def onInput_delp(self):
+        url = self.url + self.gId + '/persons/' + pId
+        headers = {
+        'Ocp-Apim-Subscription-Key': key,
+        }
+        params = {
+        'personGroupId': self.gId,
+        'personId' : pId,
+        }
+        try:
+            r = requests.delete(url, headers = headers, params = params)
+        except:
+            self.logger.info(r)
+        else:
+            self.logger.info(r)
+
+
+    def onInput_onStop(self):
+        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        self.onStopped() #activate the output of the box]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Input name="delp" type="1" type_size="1" nature="1" inner="0" tooltip="delete_person" id="4" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="5" /><Parameter name="personName" inherits_from_parent="0" content_type="3" value="" default_value="" custom_choice="0" tooltip="" id="6" /><Parameter name="groupNameId" inherits_from_parent="0" content_type="3" value="atelier310" default_value="" custom_choice="0" tooltip="" id="7" /></Box><Box name="create_personGroup" id="6" localization="8" tooltip="This box contains a basic python script and can be used to create any python script box you would like.&#x0A;&#x0A;To edit its script, double-click on it." x="112" y="153"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[import os, requests, json
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+        global gnameId
+        gnameId = self.getParameter("groupNameId")
+    def onLoad(self):
+        #put initialization code here
+        pass
+
+    def onUnload(self):
+        #put clean-up code here
+        pass
+
+    def onInput_onStart(self):
+        #self.onStopped() #activate the output of the box
+        cpg = 'https://australiaeast.api.cognitive.microsoft.com/face/v1.0/persongroups/' + gnameId
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Ocp-Apim-Subscription-Key': key,
+        }
+
+        params = {
+            'personGroupId' : gnameId
+        }
+
+        body = {
+            "name": self.getParameter("name"),
+            "userData": "testcase.",
+        }
+
+        try:
+            r = requests.put(cpg ,headers = headers,params = params,data = json.dumps(body))
+        except Exception as e:
+                self.logger.info(e)  # 必要であれば失敗時の処理
+        else:
+            self.logger.info(r)
+            if str(r)=="<Response [200]>":
+                self.onStopped()
+            else:
+                self.logger.info(r)
+
+
+    def onInput_onStop(self):
+        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        self.onStopped() #activate the output of the box]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /><Parameter name="groupNameId" inherits_from_parent="0" content_type="3" value="atelier310" default_value="" custom_choice="0" tooltip="" id="5" /><Parameter name="name" inherits_from_parent="0" content_type="3" value="samplegroup" default_value="samplegroup" custom_choice="0" tooltip="" id="6" /></Box><Box name="detect" id="2" localization="8" tooltip="This box contains a basic python script and can be used to create any python script box you would like.&#x0A;&#x0A;To edit its script, double-click on it." x="306" y="42"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[import sys, os, requests, json
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+        global key
+        key = self.getParameter("Key")
+        global faceId
+
+
+    def onLoad(self):
+        self.framemanager = ALProxy("ALFrameManager")
+        self.folderName = None
+
+    def onUnload(self):
+        if self.folderName and self.folderName in sys.path:
+            sys.path.remove(self.folderName)
+        self.folderName = None
+
+
+    def onInput_onStart(self, p):
+        url = 'https://australiaeast.api.cognitive.microsoft.com/face/v1.0/detect'
+        headers = {
+            'Content-Type': 'application/octet-stream',
+            'Ocp-Apim-Subscription-Key': key,
+        }
+        params = {
+            'returnFaceId': self.getParameter("FaceId"),  # The default value is true.
+            'returnFaceLandmarks': self.getParameter("FaceLandmarks"), # The default value is false.
+            'returnFaceAttributes': self.getParameter("FaceAttributes"), # age, gender, headPose, smile, facialHair, and glasses.
+        }
+        #img_url = '/home/nao/.local/share/PackageManager/apps/.lastUploadedChoregrapheBehavior'
+        try:
+            r = requests.post(url, headers = headers, params = params, data = open(p,"rb"))
+        except Exception as e:
+            self.logger.info(e)  # 必要であれば失敗時の処理
+        else:
+            global faceId
+            if str(r)=="<Response [200]>" and r.json() != []:
+                faceId = r.json()[0]['faceId']
+                age = 'あなたは'+ str(r.json()[0]['faceAttributes']['age']).split(".")[0]+'歳ぐらいです'
+                self.age(age)
+                self.logger.info(r.json())
+                self.onStopped()
+            else:
+                self.logger.info(r)
+                self.logger.info(r.json())
+
+    def onInput_onStop(self):
+        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        self.onStopped() #activate the output of the box]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="0" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /><Output name="age" type="3" type_size="1" nature="2" inner="0" tooltip="" id="5" /><Parameter name="Key" inherits_from_parent="0" content_type="3" value="" default_value="" custom_choice="0" tooltip="" id="6" /><Parameter name="FaceId" inherits_from_parent="0" content_type="0" value="1" default_value="1" tooltip="" id="7" /><Parameter name="FaceLandmarks" inherits_from_parent="0" content_type="0" value="0" default_value="0" tooltip="" id="8" /><Parameter name="FaceAttributes" inherits_from_parent="0" content_type="3" value="age,gender" default_value="age,gender" custom_choice="0" tooltip="" id="9" /></Box><Box name="train" id="4" localization="8" tooltip="This box contains a basic python script and can be used to create any python script box you would like.&#x0A;&#x0A;To edit its script, double-click on it." x="117" y="392"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+        self.url = 'https://australiaeast.api.cognitive.microsoft.com/face/v1.0/persongroups/'
+
+    def onLoad(self):
+        #put initialization code here
+        pass
+
+    def onUnload(self):
+        #put clean-up code here
+        pass
+
+    def onInput_onStart(self):
+
+        def train():
+            url =   self.url + gnameId + '/train'
+            headers = {
+                'Ocp-Apim-Subscription-Key': key,
+            }
+            params = {
+                'personGroupId': gnameId,
+            }
+            try:
+                r = requests.post(url, headers = headers, params = params)
+            except Exception as e:
+                self.logger.info(e)  # 必要であれば失敗時の処理
+            else:
+                if str(r)=="<Response [202]>":
+                    self.logger.info(r)
+                    get_train()
+                else:
+                    self.logger.info(r)
+
+        def get_train():
+            url =  self.url + gnameId + '/training'
+            params = {
+                'personGroupId': gnameId,
+            }
+            headers = {
+                'Ocp-Apim-Subscription-Key': key,
+            }
+            try:
+                r = requests.get(url, headers = headers, params = params)
+            except Exception as e:
+                self.logger.info(e)  # 必要であれば失敗時の処理
+            else:
+                if str(r)=="<Response [200]>":
+                    self.logger.info(r.json())
+                else:
+                    self.logger.info(r)
+        train()
+
+    def onInput_onStop(self):
+        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        self.onStopped() #activate the output of the box]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /></Box><Box name="add_face" id="9" localization="8" tooltip="This box contains a basic python script and can be used to create any python script box you would like.&#x0A;&#x0A;To edit its script, double-click on it." x="115" y="275"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[import sys, os, json
+
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+        # 追加コード: ここから
+        self.framemanager = ALProxy("ALFrameManager")
+        # 追加コード: ここまで
+        self.url = 'https://australiaeast.api.cognitive.microsoft.com/face/v1.0/persongroups/'
+        global pId
+        pId = self.getParameter("Id")
+    def onLoad(self):
+        #put initialization code here
+        pass
+
+    def onUnload(self):
+        #put clean-up code here
+        pass
+
+    def onInput_onStart(self):
+        #path
+        self.pic_path = os.path.join(            self.framemanager.getBehaviorPath(self.behaviorId),self.getParameter("fileName"))
+        self.pic_path = os.path.join("/home/nao/.local/share/PackageManager/apps/.lastUploadedChoregrapheBehavior", self.getParameter("fileName"))
+        self.logger.info(gnameId)
+        self.logger.info(pId)
+        self.logger.info(self.pic_path)
+        self.cp_url = self.url + gnameId + '/persons/' + pId +'/persistedFaces/'
+        headers = {
+            'Content-Type': 'application/octet-stream',
+            'Ocp-Apim-Subscription-Key': key,
+        }
+        params = {
+            'personGroupId': gnameId,
+            'personId' : pId, #personId
+            #'userData (optional)':
+            #'targetFace(optional)':
+        }
+
+        '''
+        #if Content-Type==application/json
+        body = {
+            'url': 'https://hogehoge.com'
+        }
+        '''
+
+        try:
+            r = requests.post(self.cp_url, headers = headers, params = params, data = open(self.pic_path,'rb'))
+        except Exception as e:
+                self.logger.info(e)  # 必要であれば失敗時の処理
+        else:
+            if str(r)=="<Response [200]>":
+                self.logger.info(r.json())
+            else:
+                self.logger.info(r)
+
+    def onInput_onStop(self):
+        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        self.onStopped() #activate the output of the box]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /><Parameter name="fileName" inherits_from_parent="0" content_type="3" value=".jpg" default_value="" custom_choice="0" tooltip="" id="5" /><Parameter name="Id" inherits_from_parent="0" content_type="3" value="" default_value="" custom_choice="0" tooltip="" id="6" /></Box><Box name="Say Text" id="11" localization="8" tooltip="Say the text received on its input." x="473" y="37"><bitmap>media/images/box/interaction/say.png</bitmap><script language="4"><content><![CDATA[import time
+
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+        self.tts = ALProxy('ALTextToSpeech')
+        self.ttsStop = ALProxy('ALTextToSpeech', True) #Create another proxy as wait is blocking if audioout is remote
+
+    def onLoad(self):
+        self.bIsRunning = False
+        self.ids = []
+
+    def onUnload(self):
+        for id in self.ids:
+            try:
+                self.ttsStop.stop(id)
+            except:
+                pass
+        while( self.bIsRunning ):
+            time.sleep( 0.2 )
+
+    def onInput_onStart(self, p):
+        self.bIsRunning = True
+        try:
+            sentence = "\RSPD="+ str( self.getParameter("Speed (%)") ) + "\ "
+            sentence += "\VCT="+ str( self.getParameter("Voice shaping (%)") ) + "\ "
+            sentence += str(p)
+            sentence +=  "\RST\ "
+            id = self.tts.post.say(str(sentence))
+            self.ids.append(id)
+            self.tts.wait(id, 0)
+        finally:
+            try:
+                self.ids.remove(id)
+            except:
+                pass
+            if( self.ids == [] ):
+                self.onStopped() # activate output of the box
+                self.bIsRunning = False
+
+    def onInput_onStop(self):
+        self.onUnload()]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when Diagram is loaded." id="1" /><Input name="onStart" type="3" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this Input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this Input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when Box behavior is finished." id="4" /><Parameter name="Voice shaping (%)" inherits_from_parent="1" content_type="1" value="100" default_value="100" min="50" max="150" tooltip='Used to modify at runtime the voice feature (tone, speed). In a slighty&#x0A;different way than pitch and speed, it gives a kind of &quot;gender or age&#x0A;modification&quot; effect.&#x0A;&#x0A;For instance, a quite good male derivation of female voice can be&#x0A;obtained setting this parameter to 78%.&#x0A;&#x0A;Note: For a better effect, you can compensate this parameter with the&#x0A;speed parameter. For example, if you want to decrease by 20% the voice&#x0A;shaping, you will have to increase by 20% the speed to keep a constant&#x0A;average speed.' id="5" /><Parameter name="Speed (%)" inherits_from_parent="1" content_type="1" value="100" default_value="100" min="50" max="200" tooltip="Changes the speed of the voice.&#x0A;&#x0A;Note: For a better effect, you can compensate this parameter with the voice&#x0A;shaping parameter. For example, if you want to increase by 20% the speed, you&#x0A;will have to decrease by 20% the voice shaping to keep a constant average&#x0A;speed." id="6" /><Resource name="Speech" type="Lock" timeout="0" /></Box><Box name="iden" id="10" localization="8" tooltip="This box contains a basic python script and can be used to create any python script box you would like.&#x0A;&#x0A;To edit its script, double-click on it." x="395" y="158"><bitmap>media/images/box/box-python-script.png</bitmap><script language="4"><content><![CDATA[import json, requests
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+        global r
+
+    def onLoad(self):
+        #put initialization code here
+        pass
+
+    def onUnload(self):
+        #put clean-up code here
+        pass
+
+    def onInput_onStart(self):
+        def iden():
+            global faceId
+            url = 'https://australiaeast.api.cognitive.microsoft.com/face/v1.0/identify'
+
+            headers = {
+                'Content-Type': 'application/json',
+                'Ocp-Apim-Subscription-Key': key,
+            }
+
+            body = {
+                "personGroupId": gnameId,
+                "faceIds": [
+                    faceId
+                ],
+            "maxNumOfCandidatesReturned": 10,
+            "confidenceThreshold": 0.5
+            }
+            try:
+                rr = requests.post(url, headers = headers, data = json.dumps(body))
+            except Exception as e:
+                self.logger.info(e)  # 必要であれば失敗時の処理
+            else:
+                self.logger.info(rr)
+                if str(rr)=="<Response [200]>":
+                    self.logger.info(rr.json())
+                    prob = str(rr.json()[0]['candidates'][0]['confidence'])
+                    nameId = str(rr.json()[0]['candidates'][0]['personId'].encode('utf-8'))
+
+                    try:
+                        self.logger.info(nameId)
+                        name_url="https://australiaeast.api.cognitive.microsoft.com/face/v1.0/persongroups/"+str(gnameId)+"/persons/"+str(nameId)
+                        headers = {
+                            'Content-Type': 'application/json',
+                            'Ocp-Apim-Subscription-Key': key,
+                        }
+                        params = {
+                            'personGroupId' : gnameId,
+                            'personId' : nameId,
+                        }
+                        re_name=requests.get(name_url,headers=headers,params=params)
+                        self.logger.info(re_name.json())
+                        name=re_name.json()['name'].encode('utf-8')
+                        word = 'あなたは'+prob+'ぐらいの確率で'+name+'さんです'
+                        self.word(word)
+                    except Exception as e:
+                        self.logger.info(e)
+                else:
+                    self.logger.info("response error")
+        iden()
+
+    def onInput_onStop(self):
+        self.onUnload() #it is recommended to reuse the clean-up as the box is stopped
+        self.onStopped() #activate the output of the box]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /><Output name="word" type="3" type_size="1" nature="2" inner="0" tooltip="" id="5" /></Box><Box name="Tactile Head" id="1" localization="8" tooltip="Detect touch on head tactile sensor." x="58" y="30"><bitmap>media/images/box/sensors/tactileHead.png</bitmap><script language="4"><content><![CDATA[class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+
+    def onLoad(self):
+        self.bIsRunning = False
+
+    def onUnload(self):
+        self.bIsRunning = False
+
+    def onInput_onStart(self):
+        self.bIsRunning = True
+
+    def onInput_onStop(self):
+        if( self.bIsRunning ):
+            self.onUnload() #~ it is usually a good idea to call onUnload of this box in a onStop method, as the code written in onUnload is used to finish the working of the box as well
+            self.onStopped() #~ activate output of the box
+        pass]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="1" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Input name="FrontTactilTouched" type="0" type_size="1" nature="4" stm_value_name="FrontTactilTouched" inner="1" tooltip="Connected to ALMemory. Will be stimulated every time the value subscribed to changes, respecting the refresh period." id="4" /><Input name="MiddleTactilTouched" type="0" type_size="1" nature="4" stm_value_name="MiddleTactilTouched" inner="1" tooltip="Connected to ALMemory. Will be stimulated every time the value subscribed to changes, respecting the refresh period." id="5" /><Input name="RearTactilTouched" type="0" type_size="1" nature="4" stm_value_name="RearTactilTouched" inner="1" tooltip="Connected to ALMemory. Will be stimulated every time the value subscribed to changes, respecting the refresh period." id="6" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is stopped." id="7" /><Output name="frontTouched" type="1" type_size="1" nature="2" inner="0" tooltip="The front tactile head sensor was touched." id="8" /><Output name="middleTouched" type="1" type_size="1" nature="2" inner="0" tooltip="The middle tactile head sensor was touched." id="9" /><Output name="rearTouched" type="1" type_size="1" nature="2" inner="0" tooltip="The rear tactile head sensor was touched." id="10" /><Timeline enable="0"><BehaviorLayer name="behavior_layer1"><BehaviorKeyframe name="keyframe1" index="1"><Diagram><Box name="If &gt; 0" id="1" localization="8" tooltip="Transmit only if value is &gt; 0." x="260" y="17"><bitmap>media/images/box/box-diagram.png</bitmap><script language="4"><content><![CDATA[class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+
+    def onLoad(self):
+        #~ puts code for box initialization here
+        pass
+
+    def onUnload(self):
+        #~ puts code for box cleanup here
+        pass
+
+    def onInput_onStart(self, p):
+        if(p > 0):
+            self.onStopped() #~ activate output of the box
+        pass
+
+    def onInput_onStop(self):
+        self.onUnload() #~ it is usually a good idea to call onUnload of this box in a onStop method, as the code written in onUnload is used to finish the working of the box as well
+        pass]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="0" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /></Box><Box name="If &gt; 0" id="2" localization="8" tooltip="Transmit only if value is &gt; 0." x="256" y="119"><bitmap>media/images/box/box-diagram.png</bitmap><script language="4"><content><![CDATA[class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+
+    def onLoad(self):
+        #~ puts code for box initialization here
+        pass
+
+    def onUnload(self):
+        #~ puts code for box cleanup here
+        pass
+
+    def onInput_onStart(self, p):
+        if(p > 0):
+            self.onStopped() #~ activate output of the box
+        pass
+
+    def onInput_onStop(self):
+        self.onUnload() #~ it is usually a good idea to call onUnload of this box in a onStop method, as the code written in onUnload is used to finish the working of the box as well
+        pass]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="0" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /></Box><Box name="If &gt; 0" id="3" localization="8" tooltip="Transmit only if value is &gt; 0." x="261" y="223"><bitmap>media/images/box/box-diagram.png</bitmap><script language="4"><content><![CDATA[class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self, False)
+
+    def onLoad(self):
+        #~ puts code for box initialization here
+        pass
+
+    def onUnload(self):
+        #~ puts code for box cleanup here
+        pass
+
+    def onInput_onStart(self, p):
+        if(p > 0):
+            self.onStopped() #~ activate output of the box
+        pass
+
+    def onInput_onStop(self):
+        self.onUnload() #~ it is usually a good idea to call onUnload of this box in a onStop method, as the code written in onUnload is used to finish the working of the box as well
+        pass]]></content></script><Input name="onLoad" type="1" type_size="1" nature="0" inner="1" tooltip="Signal sent when diagram is loaded." id="1" /><Input name="onStart" type="0" type_size="1" nature="2" inner="0" tooltip="Box behavior starts when a signal is received on this input." id="2" /><Input name="onStop" type="1" type_size="1" nature="3" inner="0" tooltip="Box behavior stops when a signal is received on this input." id="3" /><Output name="onStopped" type="1" type_size="1" nature="1" inner="0" tooltip="Signal sent when box behavior is finished." id="4" /></Box><Link inputowner="1" indexofinput="2" outputowner="0" indexofoutput="4" /><Link inputowner="0" indexofinput="8" outputowner="1" indexofoutput="4" /><Link inputowner="2" indexofinput="2" outputowner="0" indexofoutput="5" /><Link inputowner="0" indexofinput="9" outputowner="2" indexofoutput="4" /><Link inputowner="3" indexofinput="2" outputowner="0" indexofoutput="6" /><Link inputowner="0" indexofinput="10" outputowner="3" indexofoutput="4" /></Diagram></BehaviorKeyframe></BehaviorLayer></Timeline><Resource name="Head-sequence" type="Lock" timeout="0" /></Box><Link inputowner="2" indexofinput="2" outputowner="3" indexofoutput="3" /><Link inputowner="5" indexofinput="2" outputowner="6" indexofoutput="4" /><Link inputowner="1" indexofinput="2" outputowner="0" indexofoutput="2" /><Link inputowner="3" indexofinput="2" outputowner="1" indexofoutput="9" /><Link inputowner="11" indexofinput="2" outputowner="2" indexofoutput="5" /></Diagram></BehaviorKeyframe></BehaviorLayer></Timeline></Box></ChoregrapheProject>

@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<package version="0.0.0" uuid="faceapi-3cc8e0">
+ <names>
+  <name lang="en_US">azureface</name>
+ </names>
+ <supportedLanguages>
+  <language>en_US</language>
+  <language>ja_JP</language>
+ </supportedLanguages>
+ <descriptionLanguages>
+  <language>en_US</language>
+  <language>ja_JP</language>
+ </descriptionLanguages>
+ <contents>
+  <behaviorContent path="behavior_1">
+   <userRequestable/>
+   <nature>interactive</nature>
+   <permissions/>
+  </behaviorContent>
+ </contents>
+</package>

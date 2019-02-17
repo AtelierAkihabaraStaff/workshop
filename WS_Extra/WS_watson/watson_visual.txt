@@ -1,0 +1,12 @@
+data=msg.result["images"][0]["classifiers"][0]["classes"]
+
+data.sort(function(val1,val2){
+        var val1 = val1.score;
+        var val2 = val2.score;
+        if( val1 < val2 ) {
+        return 1;} 
+    else {return -1; } }); 
+
+var list = data[0]["class"]+" or "+data[1]["class"]+" or "+data[2]["class"];
+msg.payload=list;
+return msg;
