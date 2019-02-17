@@ -1,0 +1,11 @@
+        import requests
+        url = "http://weather.livedoor.com/forecast/webservice/json/v1?city=130010"
+        r = requests.get(url)
+        data = r.json()
+
+        ken = data['location']['prefecture'].encode('utf8')  # Tokyo-to
+        shi = data['location']['city'].encode('utf8') # Tokyo
+        date = data['forecasts'][0]['dateLabel'].encode('utf8')  # today
+        tenki = data['forecasts'][0]['telop'].encode('utf8') # weather
+        tenki_text = ken + shi+'の'+date+'の天気は'+tenki+'です。'
+        self.text(tenki_text)

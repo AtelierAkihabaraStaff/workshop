@@ -1,0 +1,41 @@
+class MyClass(GeneratedClass):
+    def __init__(self):
+        GeneratedClass.__init__(self)
+
+    def onLoad(self):
+        self.framemanager = ALProxy("ALFrameManager")
+        self.folderName = None
+
+    def onUnload(self):
+        import sys
+        if self.folderName and self.folderName in sys.path:
+            sys.path.remove(self.folderName)
+        self.folderName = None
+
+    def onInput_onStart(self,p):
+        import sys, os
+        self.folderName = os.path.join(self.framemanager.getBehaviorPath(self.behaviorId), "../lib")
+        if self.folderName not in sys.path:
+            sys.path.append(self.folderName)
+
+        from requests_oauthlib import OAuth1Session
+        url = "https://api.twitter.com/1.1/statuses/update.json"
+
+        Consumer_Key = ''
+        Consumer_Secret = ''
+        Access_Token = ''
+        Access_Token_Secret = ''
+
+        twitter = OAuth1Session(Consumer_Key,
+                        Consumer_Secret,
+                        Access_Token,
+                        Access_Token_Secret)
+
+        params = {'status':p}
+
+        twitter.post(url, params = params)
+        self.onStopped()
+
+    def onInput_onStop(self):
+        self.onUnload()
+        self.onStopped()
